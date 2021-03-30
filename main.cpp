@@ -16,7 +16,7 @@ struct coefficients {
 
 std::vector<coefficients> Interpolate(std::vector<point> points);
 
-std::vector<std::vector<float>> GaussianElimination(std::vector<std::vector<float>> matrix);
+std::vector<float> GaussianElimination(std::vector<std::vector<float>> matrix);
 
 int CheckSubset(std::vector<float> list1, std::vector<float> list2);
 
@@ -130,19 +130,17 @@ std::vector<coefficients> Interpolate(std::vector<point> points){
 
     //Gaussian Elimination
 
-    std::vector<std::vector<float>> values = GaussianElimination(equationMatrix);
+    std::vector<float> values = GaussianElimination(equationMatrix);
 
-    for(int i = 0, l = values.size(); i < l; i++){
-        for(int j = 0; j < l; j++){
-            std::cout << values[i][j];
-        }
-        std::cout << std::endl;
+    for(size_t i = 0, l = values.size(); i < l; i++){
+            std::cout << values[i];
     }
+    std::cout << std::endl;
 
     return returnCoeffs;   
 }
 
-std::vector<std::vector<float>> GaussianElimination(std::vector<std::vector<float>> matrix){
+std::vector<float> GaussianElimination(std::vector<std::vector<float>> matrix){
     std::vector<float> returnVals;
     std::vector<std::vector<float>> elimMatrix = matrix;
     
@@ -150,7 +148,6 @@ std::vector<std::vector<float>> GaussianElimination(std::vector<std::vector<floa
     for(size_t i = 0, length = elimMatrix.size(); i < length; i++){
         returnVals.push_back(0);
     }
-
     //for each row i,
     for(size_t i = 0, length = elimMatrix.size(); i < length; i++){
         //in relation to every other row j,
@@ -185,7 +182,8 @@ std::vector<std::vector<float>> GaussianElimination(std::vector<std::vector<floa
             }
         }
     }
-    return elimMatrix;
+   
+    return returnVals;
 }
 
 int CheckSubset(std::vector<float> list1, std::vector<float> list2){
@@ -193,7 +191,7 @@ int CheckSubset(std::vector<float> list1, std::vector<float> list2){
     bool list2Subset = false;
     int returnVal;
 
-    for(size_t i = 0, length = list1.size(); i < length; i++){
+    for(size_t i = 0, length = list1.size()-1; i < length; i++){
         if((list1[i] != 0)&&(list2[i] == 0)){
             if(list1Subset)
                 return 0;
@@ -228,7 +226,7 @@ int FindFirstElement(std::vector<float> vector){
 
 std::vector<float> MultiplyRowBy(std::vector<float> row, float value){
     std::vector<float> returnVec = {};
-    for(int i = 0, length = row.size(); i < length; i++){
+    for(size_t i = 0, length = row.size(); i < length; i++){
         returnVec.push_back(row[i] * value);
     }
 
@@ -240,7 +238,7 @@ std::vector<float> ComplementRow(std::vector<float> target, std::vector<float> s
     std::vector<float> complementRow = MultiplyRowBy(subset, multiplier);
     std::vector<float> returnVec = {};
     
-    for(int i = 0, length = target.size(); i < length; i++){
+    for(size_t i = 0, length = target.size(); i < length; i++){
             returnVec.push_back(target[i] - complementRow[i]);
     }
     return returnVec;
@@ -248,7 +246,7 @@ std::vector<float> ComplementRow(std::vector<float> target, std::vector<float> s
 
 int CountNonZero(std::vector<float> vector){
     int count = 0;
-    for(int i = 0, length = vector.size(); i < length; i++){
+    for(size_t i = 0, length = vector.size(); i < length; i++){
         if(vector[i] != 0)
             count++;
     }
@@ -288,7 +286,7 @@ void VectorToSolution(std::vector<float> vector, std::vector<float>& solutions, 
     solutions[solutionIndex] = vector[vector.size()-1]/vector[solutionIndex];
 
     //for row in matrix
-    for(int i = 0, length = matrix.size(); i < length; i++){
+    for(size_t i = 0, length = matrix.size(); i < length; i++){
     //if row contains r[i]
         if(matrix[i][solutionIndex] != 0){
             //row[length] = row[i] * returnVals[i]
@@ -298,11 +296,14 @@ void VectorToSolution(std::vector<float> vector, std::vector<float>& solutions, 
         }
     }
     
+    //clean empty rows
     auto it = std::begin(matrix);
 
     while(it != std::end(matrix)){
-        if(CheckEmpty(*it))
+        if(CheckEmpty(*it)){
             matrix.erase(it);
+            continue;
+        }
         it++;
     }
 }
