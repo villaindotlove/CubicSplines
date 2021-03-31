@@ -18,17 +18,11 @@ std::vector<coefficients> Interpolate(std::vector<point> points);
 
 std::vector<float> GaussianElimination(std::vector<std::vector<float>> matrix);
 
-int CheckSubset(std::vector<float> list1, std::vector<float> list2);
-
 int FindFirstElement(std::vector<float> vector);
 
 std::vector<float> MultiplyRowBy(std::vector<float> row, float value);
 
-std::vector<float> ComplementRow(std::vector<float> target, std::vector<float> subset, int element);
-
-int CountNonZero(std::vector<float> vector);
-
-bool ValidSolution(std::vector<float> vector);
+std::vector<float> ComplementRow(std::vector<float> target, std::vector<float> complement, int element);
 
 void VectorToSolution(std::vector<float> vector, std::vector<float>& solutions, std::vector<std::vector<float>>& matrix);
 //
@@ -143,85 +137,63 @@ std::vector<coefficients> Interpolate(std::vector<point> points){
 std::vector<float> GaussianElimination(std::vector<std::vector<float>> matrix){
     std::vector<float> returnVals;
     std::vector<std::vector<float>> elimMatrix = matrix;
-    
+    std::vector<std::vector<float>> rowEchelonForm;
     //populate returnVals
     for(size_t i = 0, length = elimMatrix.size(); i < length; i++){
         returnVals.push_back(0);
     }
-    //for each row i,
-    for(size_t i = 0, length = elimMatrix.size(); i < length; i++){
-        //in relation to every other row j,
-        for(size_t j = 0; j < length; j++){
-            if(i == j)
-                continue;
-            if(elimMatrix[i].empty()||elimMatrix[j].empty()){
-                continue;
-            }
-            //if i is a subset of j or j is a subset of i
-            int v = CheckSubset(elimMatrix[i], elimMatrix[j]);
-            if(v == 0)
-                continue;
-            //subtract a multiple of the subset row such that one non zero value in the parent = 0;
 
-            int first;
-            if(v == 1) {//list i is a subset or they are equal sets
-                first = FindFirstElement(elimMatrix[i]);
-                elimMatrix[j] = ComplementRow(elimMatrix[j], elimMatrix[i], first);
-            }
-            if(v == 2) {//list j is a subset
-                first = FindFirstElement(elimMatrix[j]);  
-                elimMatrix[i] = ComplementRow(elimMatrix[i], elimMatrix[j], first);             
-            }
+    for(size_t i = 0, length = elimMatrix.size()-1; i < length; i++){
 
-            //if r.size() = 1 or 2 where r[length] != 0;
-            if(ValidSolution(elimMatrix[i])){
-                VectorToSolution(elimMatrix[i], returnVals, elimMatrix);            
-            }
-            else if(ValidSolution(elimMatrix[j])){
-                VectorToSolution(elimMatrix[j], returnVals, elimMatrix);
-            }
+        std::vector<std::vector<float>*> p_conflicts = {};
+        std::vector<std::vector<float>>::iterator leadingCoefficient;
+
+        auto it = std::begin(elimMatrix);
+
+        while(it != std::end(elimMatrix)){
+            std::vector<float> row = *it; 
+            if(row[i] != 0){
+                std::vector<float>* p = &*it;
+                if(p_conflicts.empty()){
+                    leadingCoefficient = it;
+                }
+                p_conflicts.push_back(p);
+            }     
+            it++;
         }
+
+        if(p_conflicts.size() > 1){
+            std::vector<float>* main = p_conflicts[0];
+            
+            auto it = std::begin(p_conflicts);
+            it++;
+
+            while(it != std::end(p_conflicts)){
+                **it = ComplementRow(**it, *main, i);
+                it++;
+            }
+            rowEchelonForm.push_back(*main);
+            elimMatrix.erase(leadingCoefficient);
+        }
+        /*
+        newM.pushback(vector{0}) for each row in M
+        for each row r[n]
+            newM[FindFirstElement(r[n])] = r[n]
+        */
+
     }
-   
+    rowEchelonForm.push_back(elimMatrix[0]);
+    
     return returnVals;
-}
-
-int CheckSubset(std::vector<float> list1, std::vector<float> list2){
-    bool list1Subset = false;
-    bool list2Subset = false;
-    int returnVal;
-
-    for(size_t i = 0, length = list1.size()-1; i < length; i++){
-        if((list1[i] != 0)&&(list2[i] == 0)){
-            if(list1Subset)
-                return 0;
-            else if(!list2Subset)
-                list2Subset = true;
-            else
-                continue;
-        }else if((list1[i] == 0)&&(list2[i] != 0)){
-            if(list2Subset)
-                return 0;
-            else if(!list1Subset)
-                list1Subset = true;
-            else
-                continue;
-        }
-    }
-
-    if(list2Subset)
-        return 2;
-    else
-        return 1;
 }
 
 int FindFirstElement(std::vector<float> vector){
     for(size_t i = 0, length = vector.size(); i < length; i++){
         if(vector[i] != 0){
-            return i;
+            return static_cast<int>(i);
         }
     }
-    return 0;
+    return -1;
 }
 
 std::vector<float> MultiplyRowBy(std::vector<float> row, float value){
@@ -233,36 +205,15 @@ std::vector<float> MultiplyRowBy(std::vector<float> row, float value){
     return returnVec;
 }
 
-std::vector<float> ComplementRow(std::vector<float> target, std::vector<float> subset, int element){
-    float multiplier = target[element]/subset[element];
-    std::vector<float> complementRow = MultiplyRowBy(subset, multiplier);
+std::vector<float> ComplementRow(std::vector<float> target, std::vector<float> complement, int element){
+    float multiplier = target[element]/complement[element];
+    std::vector<float> complementRow = MultiplyRowBy(complement, multiplier);
     std::vector<float> returnVec = {};
     
     for(size_t i = 0, length = target.size(); i < length; i++){
             returnVec.push_back(target[i] - complementRow[i]);
     }
     return returnVec;
-}
-
-int CountNonZero(std::vector<float> vector){
-    int count = 0;
-    for(size_t i = 0, length = vector.size(); i < length; i++){
-        if(vector[i] != 0)
-            count++;
-    }
-    return count;
-}
-
-bool ValidSolution(std::vector<float> vector){
-    int n = CountNonZero(vector);
-    if(n == 1){
-        return true;
-    }
-    else if(n == 2){
-        if(*vector.end() != 0){
-            return true;
-        }
-    }else return false;
 }
 
 bool CheckEmpty(std::vector<float> vector){
@@ -278,32 +229,4 @@ bool CheckEmpty(std::vector<float> vector){
     }
     return true;
 
-}
-
-void VectorToSolution(std::vector<float> vector, std::vector<float>& solutions, std::vector<std::vector<float>>& matrix){
-    //returnVals[i] = r[length]/r[i]
-    int solutionIndex = FindFirstElement(vector);
-    solutions[solutionIndex] = vector[vector.size()-1]/vector[solutionIndex];
-
-    //for row in matrix
-    for(size_t i = 0, length = matrix.size(); i < length; i++){
-    //if row contains r[i]
-        if(matrix[i][solutionIndex] != 0){
-            //row[length] = row[i] * returnVals[i]
-            //row[i] = 0
-            matrix[i][length-1] -= matrix[i][solutionIndex] * solutions[solutionIndex];
-            matrix[i][solutionIndex] = 0;
-        }
-    }
-    
-    //clean empty rows
-    auto it = std::begin(matrix);
-
-    while(it != std::end(matrix)){
-        if(CheckEmpty(*it)){
-            matrix.erase(it);
-            continue;
-        }
-        it++;
-    }
 }
