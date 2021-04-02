@@ -24,7 +24,7 @@ std::vector<float> MultiplyRowBy(std::vector<float> row, float value);
 
 std::vector<float> ComplementRow(std::vector<float> target, std::vector<float> complement, int element);
 
-void VectorToSolution(std::vector<float> vector, std::vector<float>& solutions, std::vector<std::vector<float>>& matrix);
+//void VectorToSolution(std::vector<float> vector, std::vector<float>& solutions, std::vector<std::vector<float>>& matrix);
 //
 
 int main() {
@@ -175,15 +175,32 @@ std::vector<float> GaussianElimination(std::vector<std::vector<float>> matrix){
             rowEchelonForm.push_back(*main);
             elimMatrix.erase(leadingCoefficient);
         }
-        /*
-        newM.pushback(vector{0}) for each row in M
-        for each row r[n]
-            newM[FindFirstElement(r[n])] = r[n]
-        */
-
     }
     rowEchelonForm.push_back(elimMatrix[0]);
-    
+
+    auto it = std::end(rowEchelonForm);
+    it--;
+
+    while(it != std::begin(rowEchelonForm)){
+        //assume that *it will be in solution form.
+        std::vector<float> row = *it;
+        int element = FindFirstElement(row);
+        float known = row.back();
+        float unknown = row[element];
+        float val = known/unknown;
+        returnVals[element] = val;
+
+        auto it_copy = it;
+        while(it_copy != std::begin(rowEchelonForm)){
+            std::vector<float> r = *it_copy;
+            r[r.size()-1] -= r[element] * val;
+            r[element] = 0;
+            *it_copy = r;
+            //*it_copy = ComplementRow(*it_copy, returnVals, element);
+            it_copy--;
+        }
+        it--;
+    }
     return returnVals;
 }
 
@@ -214,19 +231,4 @@ std::vector<float> ComplementRow(std::vector<float> target, std::vector<float> c
             returnVec.push_back(target[i] - complementRow[i]);
     }
     return returnVec;
-}
-
-bool CheckEmpty(std::vector<float> vector){
-    auto it = std::begin(vector);
-
-    while(it != std::end(vector)){
-        if(*it != 0){
-            return false;
-        }   
-        else{
-            it++;
-        }
-    }
-    return true;
-
 }
