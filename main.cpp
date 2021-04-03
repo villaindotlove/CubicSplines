@@ -24,12 +24,16 @@ std::vector<float> MultiplyRowBy(std::vector<float> row, float value);
 
 std::vector<float> ComplementRow(std::vector<float> target, std::vector<float> complement, int element);
 
-//void VectorToSolution(std::vector<float> vector, std::vector<float>& solutions, std::vector<std::vector<float>>& matrix);
+// void VectorToSolution(std::vector<float> vector, std::vector<float>& solutions, std::vector<std::vector<float>>& matrix);
 //
 
 int main() {
     std::vector<point> points = {{1,2},{2,3},{3,5}};
-    Interpolate(points);
+    std::vector<coefficients> c = Interpolate(points);
+    for(size_t i = 0, l = c.size(); i < l; i++){
+        std::cout << c[i].D << "x^3 + " << c[i].C << "x^2 + " << c[i].B << "x + " << c[i].A << "\n";
+        std::cout << "between points: " << points[i].x << "," << points[i].y << " and " << points[i+1].x << "," << points[i+1].y << "\n";
+    }
     return 0;
 }
 
@@ -126,11 +130,13 @@ std::vector<coefficients> Interpolate(std::vector<point> points){
 
     std::vector<float> values = GaussianElimination(equationMatrix);
 
-    for(size_t i = 0, l = values.size(); i < l; i++){
-            std::cout << values[i];
+    for(size_t i = 0, l = values.size()/3; i < l; i++){
+        size_t seg = 3*i;
+        returnCoeffs[i].B = values[seg];
+        returnCoeffs[i].C = values[seg+1];
+        returnCoeffs[i].D = values[seg+2];
     }
-    std::cout << std::endl;
-
+    
     return returnCoeffs;   
 }
 
@@ -178,28 +184,23 @@ std::vector<float> GaussianElimination(std::vector<std::vector<float>> matrix){
     }
     rowEchelonForm.push_back(elimMatrix[0]);
 
-    auto it = std::end(rowEchelonForm);
-    it--;
+    auto it = std::rbegin(rowEchelonForm);
 
-    while(it != std::begin(rowEchelonForm)){
+    while(it != std::rend(rowEchelonForm)){
         //assume that *it will be in solution form.
-        std::vector<float> row = *it;
-        int element = FindFirstElement(row);
-        float known = row.back();
-        float unknown = row[element];
+        int element = FindFirstElement(*it);
+        float known = (*it).back();
+        float unknown = (*it)[element];
         float val = known/unknown;
         returnVals[element] = val;
 
-        auto it_copy = it;
-        while(it_copy != std::begin(rowEchelonForm)){
-            std::vector<float> r = *it_copy;
-            r[r.size()-1] -= r[element] * val;
-            r[element] = 0;
-            *it_copy = r;
-            //*it_copy = ComplementRow(*it_copy, returnVals, element);
-            it_copy--;
+        auto it_c = it;
+        while(it_c != std::rend(rowEchelonForm)){
+            (*it_c)[(*it_c).size()-1] -= (*it_c)[element] * val;
+            (*it_c)[element] = 0;
+            it_c++;
         }
-        it--;
+        it++;
     }
     return returnVals;
 }
