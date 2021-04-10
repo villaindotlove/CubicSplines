@@ -6,9 +6,12 @@
 int main(){
     int windowX = 800;
     int windowY = 600;
-    int graphOffset = 15;
-    const int workArea[2] = {windowX - graphOffset, windowY - graphOffset}; 
-    int graphLimits = 10;
+    int graphOffset = 25;
+    int scaleX = 10;
+    int scaleY = 10;
+    float pixelDensityX = static_cast<float>(scaleX)/windowX;
+    float pixelDensityY = static_cast<float>(scaleY)/windowY;
+    const int workArea[2] = {(windowX - graphOffset), (windowY - graphOffset)}; 
 
     sf::VertexArray axes(sf::LinesStrip, 3);
     axes[0].position = sf::Vector2f(graphOffset, graphOffset);
@@ -28,10 +31,16 @@ int main(){
 
     for(int i = 0; i < workArea[0]; i++){
         float x = i;
-        //float y = -((c[0].D * pow(i,3) + c[0].C * pow(i,2) + c[0].B * i + c[0].A))+(windowY-10);
-        float y = -x+(windowY-graphOffset);
+        // float y = -(c[0].D * pow(i,3) + c[0].C * pow(i,2) + c[0].B * i + c[0].A);
+        // x = x * pixelDensityX;
+        float y = x;
+        std::cout << y << "," << pixelDensityY << "\n";
+        x = x/pixelDensityX;
+        y = -(y/pixelDensityY);
+        y += windowY-graphOffset;
 
-        if((y < graphOffset)||(y > workArea[0])){
+        if((y <= graphOffset)||(y >= workArea[0])){
+            std::cout << "out of graph bounds" << "\n";
             try {
                 graph[i].position = graph[i-1].position;
             }
@@ -57,7 +66,5 @@ int main(){
         window.draw(axes);
         window.display();
     }
-
-
     return 0;
 }
