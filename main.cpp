@@ -3,12 +3,16 @@
 #include <SFML/Graphics.hpp>
 #include <math.h>
 
+sf::VertexArray DrawCross(int size, float xPos, float yPos);
+float GraphToPixel(float point, bool yValue, float pixelDensity, float offset, float windowDimension);
+
 int main(){
-    int windowX = 800;
-    int windowY = 600;
+    int windowX = 500;
+    int windowY = 500;
     int graphOffset = 25;
     int scaleX = 10;
     int scaleY = 10;
+    int pointSize = 10;
     float pixelDensityX = static_cast<float>(scaleX)/windowX;
     float pixelDensityY = static_cast<float>(scaleY)/windowY;
     const int workArea[2] = {(windowX - graphOffset), (windowY - graphOffset)}; 
@@ -21,26 +25,68 @@ int main(){
     sf::RenderWindow window(sf::VideoMode(windowX,windowY), "Graph time!!!!");
 
     std::vector<point> points = {{1,2},{2,3},{3,5}};
-    std::vector<coefficients> c = Interpolate(points);
-    for(size_t i = 0, l = c.size(); i < l; i++){
-        std::cout << c[i].D << "x^3 + " << c[i].C << "x^2 + " << c[i].B << "x + " << c[i].A << "\n";
+    std::vector<coefficients> splines = Interpolate(points);
+    for(size_t i = 0, l = splines.size(); i < l; i++){
+        std::cout << splines[i].D << "x^3 + " << splines[i].C << "x^2 + " << splines[i].B << "x + " << splines[i].A << "\n";
         std::cout << "between points: " << points[i].x << "," << points[i].y << " and " << points[i+1].x << "," << points[i+1].y << "\n";
     }
 
     sf::VertexArray graph(sf::LineStrip,  workArea[0]);
+    std::vector<sf::VertexArray> pointMarks;
+    std::vector<sf::CircleShape> pointCircles;
 
     for(int i = 0; i < workArea[0]; i++){
-        float x = i;
-        // float y = -(c[0].D * pow(i,3) + c[0].C * pow(i,2) + c[0].B * i + c[0].A);
-        // x = x * pixelDensityX;
-        float y = x;
-        std::cout << y << "," << pixelDensityY << "\n";
-        x = x/pixelDensityX;
-        y = -(y/pixelDensityY);
-        y += windowY-graphOffset;
+        //i is the pixel being addressed
+        //convert to numerical values
+        float x = i*pixelDensityY;
 
+        auto it = points.begin();
+        while(it != points.end()){
+            if(x == (*it).x){
+                float pointX = GraphToPixel((*it).x, false, pixelDensityY, graphOffset, windowX);
+                float pointY = GraphToPixel((*it).y, true, pixelDensityY, graphOffset, windowY);
+
+                // sf::CircleShape circle;
+                // circle.setRadius(pointSize);
+                // circle.setPosition(pointX, pointY);
+
+                pointMarks.push_back(DrawCross(pointSize, pointX, pointY));
+                // pointCircles.push_back(circle);
+            }
+            it++;
+        }
+        
+        //set relation of y and x
+        float y;
+        for(size_t i = 0, l = splines.size(); i < l; i++){
+            if(x <= points[i+1].x){
+                float f = x - points[i].x;
+                y = splines[i].D * pow(f,3) + splines[i].C * pow(f,2) + splines[i].B * f + splines[i].A;
+                break;
+            }
+            else if(x > points.size()){
+                float f = x - points[l-1].x;  
+                y = splines[l-1].D * pow(f,3) + splines[l-1].C * pow(f,2) + splines[l-1].B * f + splines[l-1].A;
+                break;
+            }
+        }
+
+        x = GraphToPixel(x, false, pixelDensityX, graphOffset, windowX);
+        y = GraphToPixel(y, true, pixelDensityY, graphOffset, windowY);
+
+        // //convert back to pixel values
+        // y = y/pixelDensityY;
+        // x = x/pixelDensityX;
+
+        // //y pixels count from top of the screen, so reverse the direction
+        // y = -y;
+
+        // //fit within the axes
+        // y += windowY-graphOffset;
+        // x += graphOffset;
+        
         if((y <= graphOffset)||(y >= workArea[0])){
-            std::cout << "out of graph bounds" << "\n";
+            //std::cout << "out of graph bounds" << "\n";
             try {
                 graph[i].position = graph[i-1].position;
             }
@@ -49,9 +95,9 @@ int main(){
             }
             graph[i].color = sf::Color::Black;
         }
-        std::cout << x << "," << y << "\n";
+        // std::cout << x << "," << y << "\n";
 
-        graph[i].position = sf::Vector2f(x+graphOffset,y);
+        graph[i].position = sf::Vector2f(x,y);
     }
 
     while(window.isOpen()){
@@ -62,9 +108,45 @@ int main(){
                 window.close();
         }
         window.clear(sf::Color::Black);
+    
         window.draw(graph);
         window.draw(axes);
+        for(size_t i = 0, l = pointMarks.size(); i < l; i++){
+            window.draw(pointMarks[i]);
+            // window.draw(pointCircles[i]);
+        }
+
         window.display();
     }
     return 0;
+}
+
+sf::VertexArray DrawCross(int size, float xPos, float yPos){
+    sf::VertexArray cross(sf::Lines, 4);
+    cross[0] = sf::Vector2f(xPos + size, yPos + size);
+    cross[1] = sf::Vector2f(xPos - size, yPos - size);
+    cross[2] = sf::Vector2f(xPos + size, yPos - size);
+    cross[3] = sf::Vector2f(xPos - size, yPos + size);
+
+    cross[0].color = sf::Color::Magenta;
+    cross[1].color = sf::Color::Magenta;
+    cross[2].color = sf::Color::Magenta;
+    cross[3].color = sf::Color::Magenta;
+
+    return cross;
+}
+
+float GraphToPixel(float point, bool yValue, float pixelDensity, float offset, float windowDimension) {
+    //convert back to pixel values
+    float returnFloat = point/pixelDensity;
+
+    //y pixels count from top of the screen, so reverse the direction
+    //fit within the axes
+    if(yValue){
+        returnFloat = -returnFloat + windowDimension - offset;        
+    }else{
+        returnFloat += offset;
+    }
+
+    return returnFloat;
 }
