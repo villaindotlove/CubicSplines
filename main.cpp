@@ -5,6 +5,7 @@
 
 sf::VertexArray DrawCross(int size, float xPos, float yPos);
 float GraphToPixel(float point, bool yValue, float pixelDensity, float offset, float windowDimension);
+float PixelToGraph(float pixel, bool yValue, float pixelDensity, float offset, float windowDimension);
 
 int main(){
     int windowX = 500;
@@ -24,7 +25,7 @@ int main(){
 
     sf::RenderWindow window(sf::VideoMode(windowX,windowY), "Graph time!!!!");
 
-    std::vector<point> points = {{1,2},{2,3},{3,5}};
+    std::vector<point> points = {{1,2},{2,3},{3,5},{5,5},{9,0}};
     std::vector<coefficients> splines = Interpolate(points);
     for(size_t i = 0, l = splines.size(); i < l; i++){
         std::cout << splines[i].D << "x^3 + " << splines[i].C << "x^2 + " << splines[i].B << "x + " << splines[i].A << "\n";
@@ -42,16 +43,19 @@ int main(){
 
         auto it = points.begin();
         while(it != points.end()){
-            if(x == (*it).x){
-                float pointX = GraphToPixel((*it).x, false, pixelDensityY, graphOffset, windowX);
-                float pointY = GraphToPixel((*it).y, true, pixelDensityY, graphOffset, windowY);
-
-                // sf::CircleShape circle;
-                // circle.setRadius(pointSize);
-                // circle.setPosition(pointX, pointY);
-
+            if(x == it->x){
+                float pointX = GraphToPixel(it->x, false, pixelDensityY, graphOffset, windowX);
+                float pointY = GraphToPixel(it->y, true, pixelDensityY, graphOffset, windowY);
                 pointMarks.push_back(DrawCross(pointSize, pointX, pointY));
-                // pointCircles.push_back(circle);
+
+                sf::CircleShape circle;
+                circle.setRadius(pointSize);
+                circle.setPosition(pointX-pointSize, pointY-pointSize);
+                circle.setOutlineThickness(1);
+                circle.setFillColor(sf::Color::Black);
+                circle.setOutlineColor(sf::Color::White);
+
+                pointCircles.push_back(circle);
             }
             it++;
         }
@@ -73,17 +77,6 @@ int main(){
 
         x = GraphToPixel(x, false, pixelDensityX, graphOffset, windowX);
         y = GraphToPixel(y, true, pixelDensityY, graphOffset, windowY);
-
-        // //convert back to pixel values
-        // y = y/pixelDensityY;
-        // x = x/pixelDensityX;
-
-        // //y pixels count from top of the screen, so reverse the direction
-        // y = -y;
-
-        // //fit within the axes
-        // y += windowY-graphOffset;
-        // x += graphOffset;
         
         if((y <= graphOffset)||(y >= workArea[0])){
             //std::cout << "out of graph bounds" << "\n";
@@ -95,7 +88,6 @@ int main(){
             }
             graph[i].color = sf::Color::Black;
         }
-        // std::cout << x << "," << y << "\n";
 
         graph[i].position = sf::Vector2f(x,y);
     }
@@ -107,13 +99,17 @@ int main(){
             if(event.type == sf::Event::Closed)
                 window.close();
         }
+        
         window.clear(sf::Color::Black);
-    
+        //render sequence
+
+        window.draw(axes);       
+        for(size_t i = 0, l = pointMarks.size(); i < l; i++){
+            window.draw(pointCircles[i]);
+        }
         window.draw(graph);
-        window.draw(axes);
         for(size_t i = 0, l = pointMarks.size(); i < l; i++){
             window.draw(pointMarks[i]);
-            // window.draw(pointCircles[i]);
         }
 
         window.display();
@@ -123,6 +119,7 @@ int main(){
 
 sf::VertexArray DrawCross(int size, float xPos, float yPos){
     sf::VertexArray cross(sf::Lines, 4);
+    size = size/2;
     cross[0] = sf::Vector2f(xPos + size, yPos + size);
     cross[1] = sf::Vector2f(xPos - size, yPos - size);
     cross[2] = sf::Vector2f(xPos + size, yPos - size);
@@ -149,4 +146,16 @@ float GraphToPixel(float point, bool yValue, float pixelDensity, float offset, f
     }
 
     return returnFloat;
+}
+
+float PixelToGraph(float pixel, bool yValue, float pixelDensity, float offset, float windowDimension) {
+    float returnFloat = pixel;
+
+    if(yValue){
+        returnFloat -= (windowDimension-offset);
+    }else{
+        returnFloat -= offset;
+    }
+
+    return returnFloat*pixelDensity;
 }
