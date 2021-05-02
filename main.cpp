@@ -8,68 +8,95 @@ float GraphToPixel(float point, bool yValue, float pixelDensity, float offset, f
 float PixelToGraph(float pixel, bool yValue, float pixelDensity, float offset, float windowDimension);
 
 int main(){
-    int windowX = 500;
-    int windowY = 500;
-    int graphOffset = 25;
-    int scaleX = 10;
-    int scaleY = 10;
-    int pointSize = 10;
-    float pixelDensityX = static_cast<float>(scaleX)/windowX;
-    float pixelDensityY = static_cast<float>(scaleY)/windowY;
-    const int workArea[2] = {(windowX - graphOffset), (windowY - graphOffset)}; 
 
-    sf::VertexArray axes(sf::LinesStrip, 3);
-    axes[0].position = sf::Vector2f(graphOffset, graphOffset);
-    axes[1].position = sf::Vector2f(graphOffset, windowY - graphOffset);
-    axes[2].position = sf::Vector2f(windowX - graphOffset, windowY - graphOffset);
+    sf::Font font;
+    if (!font.loadFromFile("./res/LiberationSansNarrow-Regular.ttf"))
+    {
+        std::cout << "Failed to load font from file." << "\n";
+        return 1;
+    }
+
+    const int windowX = 500;
+    const int windowY = 500;
+    const int graphOffset = 25;
+    const int scaleX = 20;
+    const int scaleY = 20;
+    const int pointSize = 10;
+    const float pixelDensityX = static_cast<float>(scaleX)/windowX;
+    const float pixelDensityY = static_cast<float>(scaleY)/windowY;
+    const int workArea[2] = {(windowX - graphOffset), (windowY - graphOffset)}; 
 
     sf::RenderWindow window(sf::VideoMode(windowX,windowY), "Graph time!!!!");
 
-    std::vector<point> points = {{1,2},{2,3},{3,5},{5,5},{9,0}};
+    std::vector<point> points = {{0,0},{1,2},{2,3},{3,5},{5,5},{7,7},{9,0}};
     std::vector<coefficients> splines = Interpolate(points);
     for(size_t i = 0, l = splines.size(); i < l; i++){
         std::cout << splines[i].D << "x^3 + " << splines[i].C << "x^2 + " << splines[i].B << "x + " << splines[i].A << "\n";
         std::cout << "between points: " << points[i].x << "," << points[i].y << " and " << points[i+1].x << "," << points[i+1].y << "\n";
     }
 
+    sf::VertexArray axes(sf::LinesStrip, 3);
+    axes[0].position = sf::Vector2f(graphOffset, graphOffset);
+    axes[1].position = sf::Vector2f(graphOffset, windowY - graphOffset);
+    axes[2].position = sf::Vector2f(windowX - graphOffset, windowY - graphOffset);
+
+    sf::Text axesLabels[2];
+    axesLabels[0].setFont(font);
+    axesLabels[0].setString("Y");
+    axesLabels[0].setPosition(graphOffset/4, graphOffset);
+    axesLabels[0].setCharacterSize(18);
+    axesLabels[1].setFont(font);
+    axesLabels[1].setString("X");
+    axesLabels[1].setPosition(windowX-2*graphOffset, windowY-graphOffset);
+    axesLabels[1].setCharacterSize(18);
+
     sf::VertexArray graph(sf::LineStrip,  workArea[0]);
     std::vector<sf::VertexArray> pointMarks;
     std::vector<sf::CircleShape> pointCircles;
+    std::vector<sf::Text>        pointLabels;
 
+    //draw points
+    auto it = points.begin();
+    while(it != points.end()){
+        float pointX = GraphToPixel(it->x, false, pixelDensityX, graphOffset, windowX);
+        float pointY = GraphToPixel(it->y, true, pixelDensityY, graphOffset, windowY);
+
+        pointMarks.push_back(DrawCross(pointSize, pointX, pointY));
+
+        sf::String label = "(" + std::to_string(it->x) + "," + std::to_string(it->y) + ")";
+        sf::Text t = sf::Text(label,font,18);
+        t.setColor(sf::Color::Green);
+        t.setPosition(pointX+(graphOffset/2),pointY-graphOffset);
+        pointLabels.push_back(t);
+        
+        sf::CircleShape circle;
+        circle.setRadius(pointSize);
+        circle.setPosition(pointX-pointSize, pointY-pointSize);
+        circle.setOutlineThickness(1);
+        circle.setFillColor(sf::Color::Black);
+        circle.setOutlineColor(sf::Color::White);
+
+        pointCircles.push_back(circle);
+        it++;
+    }
+        
+
+    //fill graph with vertices
     for(int i = 0; i < workArea[0]; i++){
         //i is the pixel being addressed
         //convert to numerical values
         float x = i*pixelDensityY;
-
-        auto it = points.begin();
-        while(it != points.end()){
-            if(x == it->x){
-                float pointX = GraphToPixel(it->x, false, pixelDensityY, graphOffset, windowX);
-                float pointY = GraphToPixel(it->y, true, pixelDensityY, graphOffset, windowY);
-                pointMarks.push_back(DrawCross(pointSize, pointX, pointY));
-
-                sf::CircleShape circle;
-                circle.setRadius(pointSize);
-                circle.setPosition(pointX-pointSize, pointY-pointSize);
-                circle.setOutlineThickness(1);
-                circle.setFillColor(sf::Color::Black);
-                circle.setOutlineColor(sf::Color::White);
-
-                pointCircles.push_back(circle);
-            }
-            it++;
-        }
-        
         //set relation of y and x
         float y;
         for(size_t i = 0, l = splines.size(); i < l; i++){
+            float f;
             if(x <= points[i+1].x){
-                float f = x - points[i].x;
+                f = x - points[i].x;
                 y = splines[i].D * pow(f,3) + splines[i].C * pow(f,2) + splines[i].B * f + splines[i].A;
                 break;
             }
             else if(x > points.size()){
-                float f = x - points[l-1].x;  
+                f = x - points[l-1].x;  
                 y = splines[l-1].D * pow(f,3) + splines[l-1].C * pow(f,2) + splines[l-1].B * f + splines[l-1].A;
                 break;
             }
@@ -78,6 +105,7 @@ int main(){
         x = GraphToPixel(x, false, pixelDensityX, graphOffset, windowX);
         y = GraphToPixel(y, true, pixelDensityY, graphOffset, windowY);
         
+        //test for points being out of bounds
         if((y <= graphOffset)||(y >= workArea[0])){
             //std::cout << "out of graph bounds" << "\n";
             try {
@@ -88,7 +116,6 @@ int main(){
             }
             graph[i].color = sf::Color::Black;
         }
-
         graph[i].position = sf::Vector2f(x,y);
     }
 
@@ -110,8 +137,10 @@ int main(){
         window.draw(graph);
         for(size_t i = 0, l = pointMarks.size(); i < l; i++){
             window.draw(pointMarks[i]);
+            window.draw(pointLabels[i]);
         }
-
+        window.draw(axesLabels[0]);
+        window.draw(axesLabels[1]);
         window.display();
     }
     return 0;
